@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#031a0b">
+<title>Riptide Hunt</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23031a0b'/%3E%3Ccircle cx='32' cy='32' r='24' fill='none' stroke='%2339ff7a' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='12' fill='none' stroke='%2339ff7a' stroke-opacity='.5' stroke-width='2'/%3E%3Ccircle cx='43' cy='20' r='4' fill='%23ff3b30'/%3E%3Ccircle cx='21' cy='41' r='4' fill='%233aa0ff'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #08141a; --panel: #0e222b; --line: #1d3a46; --fg: #e6f3f7; --muted: #8fb0bc;
+  --signal: #ffb347; --danger: #ff6b5a; --blue: #3aa0ff; --red: #ff3b30; --radar: #39ff7a; --radar-bg: #031a0b; --ok: #5bd68a;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); -webkit-user-select: none; user-select: none; overflow-x: hidden; }
+[hidden] { display: none !important; }
+.screen { min-height: 100%; max-width: 560px; margin: 0 auto; padding: 28px max(18px, env(safe-area-inset-right)) 40px max(18px, env(safe-area-inset-left)); }
+h1 { font-size: 42px; line-height: 1; margin: 8px 0 4px; letter-spacing: 1px; font-weight: 800; }
+h1 em { color: var(--signal); font-style: normal; }
+h2 { font-size: 26px; margin: 4px 0 8px; }
+p { color: var(--muted); line-height: 1.5; margin: 8px 0; font-size: 15px; }
+.label { display: block; color: var(--muted); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; margin: 18px 0 6px; font-weight: 600; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-top: 10px; }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; min-width: 0; }
+input[type=text] { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--fg); font-size: 18px; padding: 13px; -webkit-user-select: text; user-select: text; font-family: inherit; }
+input:focus-visible, button:focus-visible { outline: 3px solid var(--radar); outline-offset: 2px; }
+button { font: inherit; cursor: pointer; }
+.cta { width: 100%; margin-top: 16px; padding: 15px; border: 0; border-radius: 12px; background: var(--signal); color: #1b1203; font-size: 18px; font-weight: 800; letter-spacing: .06em; }
+.cta[disabled] { opacity: .4; cursor: not-allowed; }
+.ghost { width: 100%; margin-top: 10px; padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--fg); font-size: 16px; font-weight: 700; }
+.seg { padding: 13px 6px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 15px; font-weight: 600; }
+.seg[aria-pressed=true] { border-color: var(--signal); background: rgba(255,179,71,.12); color: var(--fg); }
+.err { color: var(--danger); font-size: 14px; margin-top: 12px; }
+.status { font-size: 12px; font-weight: 700; }
+.code { font-size: 52px; font-weight: 800; letter-spacing: 8px; color: var(--signal); }
+.player { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.player .l { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.dot { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+.chk { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.chk input { width: 22px; height: 22px; margin-top: 2px; accent-color: var(--signal); }
+
+/* game */
+#game { position: fixed; inset: 0; background: var(--radar-bg); }
+#radar { position: absolute; left: 0; right: 0; top: 150px; bottom: 120px; width: 100%; height: calc(100% - 270px); display: block; touch-action: manipulation; }
+.hud { position: absolute; font-variant-numeric: tabular-nums; pointer-events: none; }
+#top { top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; justify-content: space-between; gap: 8px; }
+.chip { background: rgba(3,26,11,.88); border: 1px solid var(--radar); border-radius: 10px; padding: 6px 12px; min-width: 110px; }
+.chip small { display: flex; align-items: center; gap: 6px; color: var(--radar); font-size: 10px; letter-spacing: .14em; font-weight: 700; }
+.chip b { font-size: 24px; font-weight: 800; }
+.chip i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+#stat { top: calc(max(12px, env(safe-area-inset-top)) + 62px); left: 14px; background: rgba(3,26,11,.88); border-radius: 8px; padding: 4px 8px; color: var(--radar); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+#stat u { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+#toast { top: calc(max(12px, env(safe-area-inset-top)) + 92px); left: 20px; right: 20px; background: rgba(3,26,11,.95); border: 1px solid var(--radar); border-radius: 10px; padding: 10px; text-align: center; color: var(--radar); font-weight: 700; opacity: 0; transition: opacity .2s; }
+#toast.on { opacity: 1; }
+#banner { top: calc(max(12px, env(safe-area-inset-top)) + 150px); left: 0; right: 0; text-align: center; }
+#banner span { display: inline-block; background: var(--panel); border-radius: 10px; padding: 8px 16px; font-weight: 800; letter-spacing: .06em; }
+#hint { left: 16px; right: 16px; bottom: 106px; text-align: center; color: var(--radar); opacity: .8; font-size: 12px; }
+#bottom { left: 12px; right: 12px; bottom: max(24px, env(safe-area-inset-bottom)); display: flex; gap: 8px; align-items: flex-end; pointer-events: auto; }
+#bottom .sp { flex: 1; }
+.smalls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.smalls .sbtn { padding: 8px 10px; font-size: 13px; }
+#nearTxt { left: 12px; right: 12px; bottom: 132px; text-align: center; font-weight: 900; font-size: 22px; color: var(--fg); text-shadow: 0 0 10px #000; pointer-events: none; }
+.sbtn { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--radar); background: rgba(3,26,11,.92); color: var(--fg); font-weight: 800; }
+.rbtn { width: 72px; height: 72px; border-radius: 50%; border: 2px solid var(--radar); background: rgba(3,26,11,.92); color: var(--fg); font-weight: 800; font-size: 13px; letter-spacing: .04em; }
+.rbtn.ready { background: var(--radar); color: #03210d; }
+#hand { border-color: var(--red); }
+.cover { position: absolute; inset: 0; background: rgba(3,12,6,.86); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+.cover .big { font-size: 120px; font-weight: 800; color: var(--radar); line-height: 1; }
+.modal { width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; text-align: left; }
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+
+.pairstep { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-top: 12px; }
+.pairstep h3 { margin: 0 0 6px; font-size: 16px; }
+canvas.qr { width: min(300px, 100%); height: auto; image-rendering: pixelated; background: #fff; border-radius: 8px; display: block; margin: 10px auto; }
+textarea.codebox { width: 100%; height: 84px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--fg); font: 12px/1.4 ui-monospace, Menlo, monospace; padding: 10px; -webkit-user-select: text; user-select: text; word-break: break-all; }
+.mini { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--fg); font-weight: 700; font-size: 14px; }
+.overlay { position: fixed; inset: 0; z-index: 20; background: rgba(3,12,6,.94); display: flex; align-items: flex-start; justify-content: center; padding: 16px; overflow: auto; }
+.overlay > .modal { width: min(460px, 100%); margin: auto; }
+.pairstep .row .cta { width: auto; padding: 11px 6px; font-size: 14px; letter-spacing: 0; }
+.pairstep .row { align-items: stretch; }
+video#scanVid { width: 100%; border-radius: 10px; background: #000; max-height: 50vh; }
+.note { font-size: 13px; color: var(--muted); }
+.sec { margin-top: 22px; padding-top: 4px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+
+<section id="home" class="screen">
+  <h1>RIPTIDE <em>HUNT</em></h1>
+  <p>Real-life tag. Blue players run, red players tag. Three game modes, a shrinking play area and a green radar scanner. No sign-in.</p>
+  <label class="label" for="name">Your name</label>
+  <input type="text" id="name" maxlength="14" autocomplete="off" placeholder="Name">
+  <label class="card chk"><input type="checkbox" id="safe"><span style="color:var(--muted);font-size:15px;line-height:1.45">I will stay on foot, in public places, away from roads, water and private property. I will stop playing if anyone feels unsafe.</span></label>
+
+  <div class="sec">
+    <span class="label" style="margin-top:8px">Nearby · works with no internet</span>
+    <p class="note" style="margin-top:0">Everyone joins the same Wi-Fi or one phone's hotspot (internet not needed). The host's phone links to each player by showing a QR code. GPS works without internet.</p>
+    <button class="cta" id="hostNear" style="margin-top:8px">HOST NEARBY GAME</button>
+    <button class="ghost" id="joinNear">JOIN NEARBY GAME</button>
+  </div>
+
+  <div class="sec">
+    <span class="label" style="margin-top:8px">Online · uses the internet</span>
+    <p class="note" id="onlineNote" style="margin-top:0">Room code over the internet. Works from anywhere.</p>
+    <button class="ghost" id="hostOn" style="margin-top:8px">HOST ONLINE GAME</button>
+    <label class="label" for="codeIn">Room code</label>
+    <input type="text" id="codeIn" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="ABCD">
+    <button class="ghost" id="joinOn">JOIN ONLINE GAME</button>
+  </div>
+  <div class="err" id="homeErr" role="status"></div>
+</section>
+
+<section id="pairJoin" class="screen" hidden>
+  <h2>Join a nearby game</h2>
+  <p>Be on the same Wi-Fi or hotspot as the host. No internet needed.</p>
+  <div class="pairstep">
+    <h3>Step 1 · Get the host's code</h3>
+    <p class="note" style="margin-top:0">Scan the host's QR code with the button below, or read it with your phone camera app and paste the text here.</p>
+    <textarea class="codebox" id="hostCode" placeholder="Paste the host's code" spellcheck="false"></textarea>
+    <div class="row"><button class="mini" id="scanHost">Scan QR</button><button class="mini" id="pasteHost">Paste</button><button class="cta" id="goStep2" style="margin:0;padding:11px;font-size:15px">NEXT</button></div>
+  </div>
+  <div class="pairstep" id="step2" hidden>
+    <h3>Step 2 · Show this reply to the host</h3>
+    <canvas class="qr" id="ansQr"></canvas>
+    <textarea class="codebox" id="ansCode" readonly></textarea>
+    <button class="mini" id="copyAns">Copy code</button>
+    <p class="note">The host scans this or pastes it. This page connects by itself.</p>
+  </div>
+  <div class="err" id="pairErr"></div>
+  <button class="ghost" id="pairBack">CANCEL</button>
+</section>
+
+<section id="lobby" class="screen" hidden>
+  <div class="status" id="lobConn"></div>
+  <span class="label" id="codeLbl">Room code</span>
+  <div class="code" id="codeShow"></div>
+  <div id="addBox" hidden>
+    <button class="ghost" id="addPlayer" style="margin-top:0">ADD A NEARBY PLAYER</button>
+  </div>
+  <span class="label">Game mode</span>
+  <div class="row" id="modes"></div>
+  <p id="modeDesc"></p>
+  <span class="label">Play area radius</span>
+  <div class="row" id="radii"></div>
+  <p>Centered on the host's position at the start.</p>
+  <div id="teamBox" hidden>
+    <span class="label">Your team</span>
+    <div class="row"><button class="seg" data-t="b">Blue</button><button class="seg" data-t="r">Red</button></div>
+  </div>
+  <span class="label" id="plLabel">Players</span>
+  <div id="roster"></div>
+  <button class="cta" id="ready">I AM READY</button>
+  <p id="lobHint" style="text-align:center"></p>
+  <div class="err" id="lobErr"></div>
+  <button class="ghost" id="leave1">LEAVE</button>
+</section>
+
+<div class="overlay" id="pairHost" hidden>
+  <div class="modal">
+    <h2>Add a nearby player</h2>
+    <div class="pairstep" style="margin-top:0">
+      <h3>Step 1 · Show this to the player</h3>
+      <canvas class="qr" id="offQr"></canvas>
+      <textarea class="codebox" id="offCode" readonly></textarea>
+      <button class="mini" id="copyOff">Copy code</button>
+      <p class="note">On their phone: Join nearby game, then scan this or paste the code.</p>
+    </div>
+    <div class="pairstep">
+      <h3>Step 2 · Their reply</h3>
+      <textarea class="codebox" id="replyCode" placeholder="Paste the player's reply code" spellcheck="false"></textarea>
+      <div class="row"><button class="mini" id="scanReply">Scan QR</button><button class="mini" id="pasteReply">Paste</button><button class="cta" id="connectReply" style="margin:0;padding:11px;font-size:15px">CONNECT</button></div>
+    </div>
+    <div class="err" id="pairHostErr"></div>
+    <button class="ghost" id="pairHostClose">Close</button>
+  </div>
+</div>
+
+<div class="overlay" id="scanner" hidden>
+  <div class="modal">
+    <h2>Scan QR code</h2>
+    <video id="scanVid" playsinline muted></video>
+    <p class="note" id="scanMsg"></p>
+    <button class="ghost" id="scanClose">Cancel</button>
+  </div>
+</div>
+<section id="game" hidden>
+  <canvas id="radar"></canvas>
+  <div class="hud" id="top">
+    <div class="chip"><small><i id="roleDot"></i><span id="roleTxt">NORMAL</span></small><b id="time">0:00</b></div>
+    <div class="chip"><small>BLUE LEFT</small><b id="blueLeft" style="color:var(--blue)">0</b></div>
+  </div>
+  <div class="hud" id="stat"><u id="connDot"></u><span id="connTxt"></span><span id="gpsTxt"></span></div>
+  <div class="hud" id="nearTxt"></div>
+  <div class="hud" id="toast"></div>
+  <div class="hud" id="banner"></div>
+  <div class="hud" id="hint"></div>
+  <div class="hud" id="bottom">
+    <div class="smalls">
+      <button class="sbtn" id="bLeave">Leave</button>
+      <button class="sbtn" id="bVoice">Voice on</button>
+      <button class="sbtn" id="bSfx">SFX on</button>
+      <button class="sbtn" id="bCal">Calibrate</button>
+    </div>
+    <div class="sp"></div>
+    <button class="rbtn" id="hand" hidden>HAND<br>TAG</button>
+    <button class="rbtn ready" id="share">SHARE</button>
+  </div>
+  <div class="cover" id="count" hidden><div class="big" id="countN">3</div><p>Get ready</p></div>
+  <div class="cover" id="handModal" hidden>
+    <div class="modal">
+      <h2>Hand tag</h2>
+      <p>The tagger types the word "tag" here to tag this player.</p>
+      <input type="text" id="handIn" autocomplete="off" autocapitalize="none" placeholder="tag">
+      <button class="cta" id="handOk" style="background:var(--red);color:#fff">CONFIRM TAG</button>
+      <button class="ghost" id="handNo">Cancel</button>
+    </div>
+  </div>
+</section>
+
+<section id="end" class="screen" hidden>
+  <span class="label" id="endMode"></span>
+  <h1 id="endTitle"></h1>
+  <p id="endBody"></p>
+  <p>Location sharing has stopped. Nobody can see where you are now.</p>
+  <button class="cta" id="toLobby">BACK TO LOBBY</button>
+  <button class="ghost" id="leave2">LEAVE ROOM</button>
+</section>
+
+
+<script>
+/* =========================================================================
+   Riptide Hunt: real-life tag. One file, no sign-in.
+   Nearby mode needs no internet. Online mode is optional (see the notes at the bottom).
+   ========================================================================= */
+var SUPABASE_URL = 'https://ljxiswvfudbzfhazyekw.supabase.co';   // optional, only for Online mode
+var SUPABASE_ANON_KEY = 'sb_publishable_AifRVFt9r98-hNzjxHImfA_-otoiMw_';
+
+var RULES = {
+  durationSec: 20 * 60, readyCountdownSec: 3, runSec: 20, shrinkDelaySec: 3 * 60,
+  tagRangeM: 1, tagHoldSec: 10,            // GPS is only good to 5-15 m, so use Hand tag, or raise tagRangeM to 3-5
+  immuneSec: 5, pingEverySec: 30, shareCooldownSec: 20,
+  sweepFadeMs: 3000,                        // taggers see blue players only as a dot that glows when the radar beam passes, then fades
+  scanRangeM: 25, warnM: 20, announceM: 5, announceResetM: 8, announceCooldownSec: 10, tagVerifyM: 30,
+  radarRanges: [25, 50, 100, 250, 500]
+};
+var RADIUS_OPTIONS = [200, 500, 1000, 2000];
+var MODES = {
+  single: { label: 'Single tag', desc: 'One player is it. Tag someone to pass it on. Whoever is it at the end loses.' },
+  virus: { label: 'Virus', desc: 'Tagged players turn red and tag too. Last blue player standing wins.' },
+  team: { label: 'Team mode', desc: 'Pick Red or Blue. Red tags Blue. Tagged Blue players are out.' }
+};
+var GRACE_MS = 60000;
+var ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };   // only used when internet exists; nearby mode works without it
+
+/* Minimal QR encoder: byte mode, error correction L, versions 1-20. Returns a boolean matrix. */
+function qrEncode(text) {
+  var data = []; var enc = unescape(encodeURIComponent(text)); for (var i = 0; i < enc.length; i++) data.push(enc.charCodeAt(i));
+  var ECC = [0,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28];
+  var BLK = [0,1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8];
+  function rawModules(v) { var r = (16 * v + 128) * v + 64; if (v >= 2) { var n = Math.floor(v / 7) + 2; r -= (25 * n - 10) * n - 55; if (v >= 7) r -= 36; } return r; }
+  function dataCap(v) { return Math.floor(rawModules(v) / 8) - ECC[v] * BLK[v]; }
+  var ver = 0;
+  for (var v = 1; v <= 20; v++) { var ccBits = v < 10 ? 8 : 16; if (4 + ccBits + data.length * 8 <= dataCap(v) * 8) { ver = v; break; } }
+  if (!ver) throw new Error('Code too long for QR');
+  var bits = [];
+  function put(val, len) { for (var i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); }
+  put(4, 4); put(data.length, ver < 10 ? 8 : 16); data.forEach(function (b) { put(b, 8); });
+  var capBits = dataCap(ver) * 8;
+  put(0, Math.min(4, capBits - bits.length)); while (bits.length % 8) bits.push(0);
+  for (var pad = 0xEC; bits.length < capBits; pad ^= 0xEC ^ 0x11) put(pad, 8);
+  var cw = []; for (i = 0; i < bits.length; i += 8) { var x = 0; for (var j = 0; j < 8; j++) x = (x << 1) | bits[i + j]; cw.push(x); }
+  // Reed-Solomon
+  var exp = new Array(512), log = new Array(256), g = 1;
+  for (i = 0; i < 255; i++) { exp[i] = g; log[g] = i; g <<= 1; if (g & 256) g ^= 0x11D; } for (i = 255; i < 512; i++) exp[i] = exp[i - 255];
+  var mul = function (a, b) { return a && b ? exp[log[a] + log[b]] : 0; };
+  function rsDiv(d, n) {
+    var gen = [1]; for (var i = 0; i < n; i++) { var ng = new Array(gen.length + 1).fill(0); for (var j = 0; j < gen.length; j++) { ng[j] ^= gen[j]; ng[j + 1] ^= mul(gen[j], exp[i]); } gen = ng; }
+    var res = new Array(n).fill(0);
+    d.forEach(function (b) { var f = b ^ res.shift(); res.push(0); for (var k = 0; k < n; k++) res[k] ^= mul(gen[k + 1], f); });
+    return res;
+  }
+  var nb = BLK[ver], eccLen = ECC[ver], raw = Math.floor(rawModules(ver) / 8), shortLen = Math.floor(raw / nb) - eccLen, numShort = nb - raw % nb;
+  var blocks = [], k = 0;
+  for (i = 0; i < nb; i++) { var len = shortLen + (i < numShort ? 0 : 1), d = cw.slice(k, k + len); k += len; blocks.push({ d: d, e: rsDiv(d, eccLen) }); }
+  var out = [];
+  for (i = 0; i <= shortLen; i++) blocks.forEach(function (b, bi) { if (i < b.d.length && !(i === shortLen && bi < numShort)) out.push(b.d[i]); });
+  for (i = 0; i < eccLen; i++) blocks.forEach(function (b) { out.push(b.e[i]); });
+  var size = ver * 4 + 17, M = [], F = [];
+  for (i = 0; i < size; i++) { M.push(new Array(size).fill(false)); F.push(new Array(size).fill(false)); }
+  function setF(x, y, dark) { if (x >= 0 && y >= 0 && x < size && y < size) { M[y][x] = dark; F[y][x] = true; } }
+  function finder(cx, cy) { for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++) { var dd = Math.max(Math.abs(dx), Math.abs(dy)); setF(cx + dx, cy + dy, dd !== 2 && dd !== 4); } }
+  finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+  for (i = 0; i < size; i++) { setF(6, i, i % 2 === 0); setF(i, 6, i % 2 === 0); }
+  finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+  var pos = [];
+  if (ver > 1) { var na = Math.floor(ver / 7) + 2, step = ver === 32 ? 26 : Math.ceil((ver * 4 + 4) / (na * 2 - 2)) * 2; pos = [6]; for (var p = size - 7; pos.length < na; p -= step) pos.splice(1, 0, p); }
+  pos.forEach(function (ax, ai) { pos.forEach(function (ay, aj) {
+    if ((ai === 0 && aj === 0) || (ai === 0 && aj === pos.length - 1) || (ai === pos.length - 1 && aj === 0)) return;
+    for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) setF(ax + dx, ay + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+  }); });
+  function formatBits(mask) { var dat = (1 << 3) | mask, rem = dat; for (var i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537); return ((dat << 10) | rem) ^ 0x5412; }
+  function drawFormat(mask) {
+    var b = formatBits(mask), bit = function (i) { return ((b >>> i) & 1) !== 0; }, i;
+    for (i = 0; i <= 5; i++) setF(8, i, bit(i)); setF(8, 7, bit(6)); setF(8, 8, bit(7)); setF(7, 8, bit(8)); for (i = 9; i < 15; i++) setF(14 - i, 8, bit(i));
+    for (i = 0; i < 8; i++) setF(size - 1 - i, 8, bit(i)); for (i = 8; i < 15; i++) setF(8, size - 15 + i, bit(i)); setF(8, size - 8, true);
+  }
+  drawFormat(0);
+  if (ver >= 7) {
+    var rem = ver; for (i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25); var vb = (ver << 12) | rem;
+    for (i = 0; i < 18; i++) { var bt = ((vb >>> i) & 1) !== 0, a = size - 11 + i % 3, bb = Math.floor(i / 3); setF(a, bb, bt); setF(bb, a, bt); }
+  }
+  var func = F.map(function (r) { return r.slice(); });
+  var bi = 0;
+  for (var right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (var vert = 0; vert < size; vert++) for (var j2 = 0; j2 < 2; j2++) {
+      var xx = right - j2, upward = ((right + 1) & 2) === 0, yy = upward ? size - 1 - vert : vert;
+      if (!func[yy][xx] && bi < out.length * 8) { M[yy][xx] = ((out[bi >>> 3] >>> (7 - (bi & 7))) & 1) !== 0; bi++; }
+    }
+  }
+  function applyMask(m) { for (var y = 0; y < size; y++) for (var x = 0; x < size; x++) { var inv; switch (m) { case 0: inv = (x + y) % 2 === 0; break; case 1: inv = y % 2 === 0; break; case 2: inv = x % 3 === 0; break; case 3: inv = (x + y) % 3 === 0; break; case 4: inv = (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0; break; case 5: inv = x * y % 2 + x * y % 3 === 0; break; case 6: inv = (x * y % 2 + x * y % 3) % 2 === 0; break; default: inv = ((x + y) % 2 + x * y % 3) % 2 === 0; } if (!func[y][x] && inv) M[y][x] = !M[y][x]; } }
+  function penalty() {
+    var res = 0, x, y, r;
+    for (y = 0; y < size; y++) { r = 1; for (x = 1; x < size; x++) { if (M[y][x] === M[y][x - 1]) { r++; if (r === 5) res += 3; else if (r > 5) res++; } else r = 1; } }
+    for (x = 0; x < size; x++) { r = 1; for (y = 1; y < size; y++) { if (M[y][x] === M[y - 1][x]) { r++; if (r === 5) res += 3; else if (r > 5) res++; } else r = 1; } }
+    for (y = 0; y < size - 1; y++) for (x = 0; x < size - 1; x++) if (M[y][x] === M[y][x + 1] && M[y][x] === M[y + 1][x] && M[y][x] === M[y + 1][x + 1]) res += 3;
+    var dark = 0; for (y = 0; y < size; y++) for (x = 0; x < size; x++) if (M[y][x]) dark++;
+    res += (Math.ceil(Math.abs(dark * 20 - size * size * 10) / (size * size)) - 1) * 10;
+    return res;
+  }
+  var best = 0, bestP = 1e9;
+  for (var m = 0; m < 8; m++) { applyMask(m); drawFormat(m); var pn = penalty(); if (pn < bestP) { bestP = pn; best = m; } applyMask(m); }
+  applyMask(best); drawFormat(best);
+  return M;
+}
+
+
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var C = { blue: '#3aa0ff', red: '#ff3b30', radar: '#39ff7a', bg: '#031a0b', danger: '#ff6b5a' };
+  var onlineConfigured = SUPABASE_URL.indexOf('YOUR-PROJECT') < 0 && SUPABASE_ANON_KEY.indexOf('YOUR-ANON') < 0;
+
+  /* ---------- geo ---------- */
+  var rad = function (d) { return d * Math.PI / 180; };
+  function dist(a, b) {
+    if (!a || !b || a.lat == null || b.lat == null) return Infinity;
+    var dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * 6371000 * Math.asin(Math.sqrt(x));
+  }
+
+  // ---- accurate metering: smoothing, accuracy-aware distance, calibration ----
+  var CAL = 0; try { CAL = parseFloat(localStorage.getItem('rh-cal')) || 0; } catch (e) {}
+  function smoothFix(prev, c, t) {
+    var acc = Math.max(3, c.accuracy || 15);
+    if (!prev) return { lat: c.latitude, lng: c.longitude, acc: acc, v: acc * acc, t: t };
+    var dt = Math.max(0, (t - prev.t) / 1000), v = prev.v + dt * 9;            // allow ~3 m/s drift
+    var k = v / (v + acc * acc);
+    var lat = prev.lat + k * (c.latitude - prev.lat), lng = prev.lng + k * (c.longitude - prev.lng);
+    v = (1 - k) * v;
+    return { lat: lat, lng: lng, acc: Math.max(3, Math.min(acc, Math.sqrt(v))), v: v, t: t };
+  }
+  function effDist(a, b) {
+    var raw = dist(a, b);
+    if (CAL > 0) return Math.max(0, raw - CAL);
+    var err = Math.sqrt(Math.pow(a.acc || 10, 2) + Math.pow(b.acc || 10, 2));
+    return Math.max(0, raw - 0.6 * err);                                         // subtract likely GPS error
+  }
+  function nearWords(d) { return d <= 2 ? 'right next to you' : d <= 5 ? 'within 5 meters' : 'about ' + Math.round(d / 5) * 5 + ' meters'; }
+  function offsetM(a, b) { return { dx: (b.lng - a.lng) * 111320 * Math.cos(rad(a.lat)), dy: (b.lat - a.lat) * 110540 }; }
+  function zoneRadius(r, e) { if (e <= r.delay) return r.r0; var k = Math.min(1, (e - r.delay) / Math.max(1, r.dur - r.delay)); return r.r0 + (r.r1 - r.r0) * k; }
+  function fmt(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  function defaultRound(center, cfg) { return { t0: Date.now() + RULES.readyCountdownSec * 1000, run: RULES.runSec, dur: RULES.durationSec, center: center, r0: cfg.r0, r1: Math.max(40, Math.round(cfg.r0 * 0.2)), delay: RULES.shrinkDelaySec, mode: cfg.mode }; }
+  var rid = function () { return (window.crypto && crypto.getRandomValues) ? Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(8)), function (b) { return b.toString(16).padStart(2, '0'); }).join('') : Math.random().toString(36).slice(2, 12); };
+
+  /* ---------- QR drawing ---------- */
+  function drawQR(canvas, text) {
+    var m = qrEncode(text), n = m.length, q = 4, sc = Math.max(3, Math.floor(420 / (n + 2 * q)));
+    canvas.width = canvas.height = (n + 2 * q) * sc; var c = canvas.getContext('2d');
+    c.fillStyle = '#fff'; c.fillRect(0, 0, canvas.width, canvas.height); c.fillStyle = '#000';
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (m[y][x]) c.fillRect((x + q) * sc, (y + q) * sc, sc, sc);
+  }
+  var scanStream = null, scanTimer = 0;
+  function stopScan() { clearInterval(scanTimer); if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; } $('#scanner').hidden = true; }
+  function scanQR(cb) {
+    $('#scanner').hidden = false; var msg = $('#scanMsg'); msg.textContent = '';
+    var fallback = 'Scanning is not available in this browser. Use your phone camera app to read the QR code, copy the text, and paste it here.';
+    if (!('BarcodeDetector' in window) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { msg.textContent = fallback; return; }
+    var det = new BarcodeDetector({ formats: ['qr_code'] });
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (st) {
+      scanStream = st; var v = $('#scanVid'); v.srcObject = st; v.play(); msg.textContent = 'Point the camera at the QR code.';
+      scanTimer = setInterval(function () { det.detect(v).then(function (r) { if (r && r[0] && r[0].rawValue) { var t = r[0].rawValue; stopScan(); cb(t); } }).catch(function () {}); }, 250);
+    }).catch(function () { msg.textContent = 'Camera permission was denied. ' + fallback; });
+  }
+  $('#scanClose').addEventListener('click', stopScan);
+
+  /* ---------- compact pairing codes (WebRTC session info in ~200 characters) ---------- */
+  var SETUP_TO = { actpass: 'x', active: 'a', passive: 'p' }, SETUP_FROM = { x: 'actpass', a: 'active', p: 'passive' };
+  function b64u(bytes) { return btoa(String.fromCharCode.apply(null, bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function unb64u(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var b = atob(s), o = []; for (var i = 0; i < b.length; i++) o.push(b.charCodeAt(i)); return o; }
+  function packSDP(sdp, role) {
+    var uf = '', pw = '', fp = '', setup = 'x', cands = [];
+    sdp.split(/\r?\n/).forEach(function (l) {
+      if (l.indexOf('a=ice-ufrag:') === 0) uf = l.slice(12);
+      else if (l.indexOf('a=ice-pwd:') === 0) pw = l.slice(10);
+      else if (l.indexOf('a=fingerprint:sha-256 ') === 0) fp = l.slice(22);
+      else if (l.indexOf('a=setup:') === 0) setup = SETUP_TO[l.slice(8)] || 'x';
+      else if (l.indexOf('a=candidate:') === 0) {
+        var p = l.slice(12).split(' ');
+        if (p[2].toLowerCase() === 'udp' && p[1] === '1' && p[4].indexOf(':') < 0) cands.push({ ip: p[4], port: p[5], t: p[7] === 'srflx' ? 's' : 'h' });
+      }
+    });
+    if (!cands.length) throw new Error('No usable network address. Turn on Wi-Fi or a hotspot and try again.');
+    var rank = function (c) { return /^\d+\.\d+\.\d+\.\d+$/.test(c.ip) ? (c.t === 'h' ? 0 : 1) : 2; };
+    cands.sort(function (a, b) { return rank(a) - rank(b); }); cands = cands.slice(0, 4);
+    var fb = b64u(fp.split(':').map(function (h) { return parseInt(h, 16); }));
+    return ['RH1', role, setup, uf, pw, fb, cands.map(function (c) { return c.ip + '/' + c.port + c.t; }).join(',')].join('|');
+  }
+  function unpackSDP(code) {
+    var p = String(code).trim().split('|');
+    if (p.length < 7 || p[0] !== 'RH1') throw new Error('That is not a Riptide Hunt code. Copy it again.');
+    var fp = unb64u(p[5]).map(function (b) { return ('0' + b.toString(16)).slice(-2).toUpperCase(); }).join(':');
+    var lines = ['v=0', 'o=- 1 2 IN IP4 127.0.0.1', 's=-', 't=0 0', 'a=group:BUNDLE 0', 'a=msid-semantic: WMS', 'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 0.0.0.0',
+      'a=ice-ufrag:' + p[3], 'a=ice-pwd:' + p[4], 'a=fingerprint:sha-256 ' + fp, 'a=setup:' + (SETUP_FROM[p[2]] || 'actpass'), 'a=mid:0', 'a=sctp-port:5000', 'a=max-message-size:262144'];
+    p[6].split(',').forEach(function (c, i) {
+      var m = /^(.+)\/(\d+)([hs])$/.exec(c); if (!m) return;
+      lines.push('a=candidate:' + (i + 1) + ' 1 udp ' + (2113937151 - i * 1000) + ' ' + m[1] + ' ' + m[2] + ' typ ' + (m[3] === 's' ? 'srflx raddr 0.0.0.0 rport 0' : 'host'));
+    });
+    lines.push('a=end-of-candidates');
+    return { type: p[1] === 'o' ? 'offer' : 'answer', sdp: lines.join('\r\n') + '\r\n' };
+  }
+  function gathered(pc) {
+    return new Promise(function (res) {
+      var done = false, fin = function () { if (!done) { done = true; res(); } };
+      if (pc.iceGatheringState === 'complete') return fin();
+      pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') fin(); });
+      var first = false;
+      pc.addEventListener('icecandidate', function (e) { if (e.candidate && !first) { first = true; setTimeout(fin, 900); } });
+      setTimeout(fin, 3500);
+    });
+  }
+
+  /* ---------- nearby room: the host phone is the hub (no internet needed) ---------- */
+  function createDirect(me, isHost) {
+    var listeners = {}, state = Object.assign({}, me), status = isHost ? 'connected' : 'connecting', closed = false, rtt = null;
+    var conns = {}, presence = {}, peers = [], hostDc = null, hostPc = null, lastRx = Date.now(), bcTimer = null, openRes = null, timers = [];
+    var emit = function (ev, p) { (listeners[ev] || []).forEach(function (f) { f(p); }); };
+    var setStatus = function (s) { if (s !== status) { status = s; emit('status', s); } };
+    var jsend = function (dc, o) { try { if (dc && dc.readyState === 'open') dc.send(JSON.stringify(o)); } catch (e) {} };
+    function rebuild() { peers = Object.keys(presence).map(function (k) { return presence[k]; }); }
+    function fanout(o) { Object.keys(conns).forEach(function (k) { jsend(conns[k].dc, o); }); }
+    function pushPeers() { bcTimer = null; rebuild(); fanout({ t: 'peers', list: peers }); emit('peers', peers); }
+    function schedule() { if (!bcTimer) bcTimer = setTimeout(pushPeers, 120); }
+    if (isHost) { presence[me.id] = state; rebuild(); }
+
+    function hostWire(c) {
+      c.dc.onmessage = function (e) {
+        var m; try { m = JSON.parse(e.data); } catch (x) { return; }
+        c.lastRx = Date.now();
+        if (m.t === 'hello' && m.p && m.p.id) {
+          if (conns[m.p.id] && conns[m.p.id] !== c) { try { conns[m.p.id].pc.close(); } catch (x) {} }
+          c.id = m.p.id; conns[c.id] = c; presence[c.id] = m.p; schedule();
+        } else if (m.t === 'pres' && c.id) { presence[c.id] = m.p; schedule(); }
+        else if (m.t === 'bc') { var o = { t: 'bc', ev: m.ev, payload: m.payload }; fanout(o); emit(m.ev, m.payload); }
+        else if (m.t === 'hb') jsend(c.dc, { t: 'hbr', ts: m.ts });
+      };
+      c.dc.onclose = function () { dropConn(c); };
+    }
+    function dropConn(c) { if (c.id && conns[c.id] === c) { delete conns[c.id]; delete presence[c.id]; schedule(); } try { c.pc.close(); } catch (e) {} }
+
+    function guestWire(dc, pc) {
+      hostDc = dc; hostPc = pc;
+      dc.onopen = function () { lastRx = Date.now(); jsend(dc, { t: 'hello', p: state }); setStatus('connected'); if (openRes) { openRes(); openRes = null; } };
+      dc.onmessage = function (e) {
+        var m; try { m = JSON.parse(e.data); } catch (x) { return; }
+        lastRx = Date.now(); setStatus('connected');
+        if (m.t === 'peers') { peers = m.list; emit('peers', peers); }
+        else if (m.t === 'bc') emit(m.ev, m.payload);
+        else if (m.t === 'hbr') rtt = Date.now() - m.ts;
+      };
+      dc.onclose = function () { if (!closed) setStatus('offline'); };
+    }
+
+    timers.push(setInterval(function () {
+      if (closed) return; var now = Date.now();
+      if (isHost) {
+        Object.keys(conns).forEach(function (k) { if (now - conns[k].lastRx > 20000) dropConn(conns[k]); });
+        pushPeers();
+      } else if (hostDc) {
+        jsend(hostDc, { t: 'hb', ts: now });
+        if (now - lastRx > 25000) setStatus('offline'); else if (now - lastRx > 9000) setStatus('reconnecting');
+      }
+    }, 3000));
+
+    var api = {
+      kind: 'direct',
+      // host: create a code for one more player; resolves { code, accept(replyCode), cancel() }
+      addGuest: function () {
+        var pc = new RTCPeerConnection(ICE), dc = pc.createDataChannel('g'), c = { pc: pc, dc: dc, id: null, lastRx: Date.now() }; hostWire(c);
+        return pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).then(function () { return gathered(pc); }).then(function () {
+          var code = packSDP(pc.localDescription.sdp, 'o');
+          return {
+            code: code,
+            accept: function (reply) {
+              return pc.setRemoteDescription(unpackSDP(reply)).then(function () {
+                return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('Could not connect. Make sure both phones are on the same Wi-Fi or hotspot, then try again.')); }, 20000); var iv = setInterval(function () { if (c.id) { clearTimeout(t); clearInterval(iv); res(presence[c.id]); } }, 200); });
+              });
+            },
+            cancel: function () { try { pc.close(); } catch (e) {} }
+          };
+        });
+      },
+      // guest: take the host's code, return the reply code
+      answer: function (offerCode) {
+        var pc = new RTCPeerConnection(ICE); pc.ondatachannel = function (e) { guestWire(e.channel, pc); };
+        return pc.setRemoteDescription(unpackSDP(offerCode)).then(function () { return pc.createAnswer(); }).then(function (a) { return pc.setLocalDescription(a); }).then(function () { return gathered(pc); }).then(function () { return packSDP(pc.localDescription.sdp, 'a'); });
+      },
+      whenOpen: function () { return new Promise(function (res, rej) { openRes = res; var t = setTimeout(function () { rej(new Error('Could not connect to the host. Check you are on the same Wi-Fi or hotspot.')); }, 45000); timers.push(t); }); },
+      connect: function () { return Promise.resolve(); },
+      update: function (patch) {
+        state = Object.assign({}, state, patch);
+        if (isHost) { presence[me.id] = state; schedule(); } else jsend(hostDc, { t: 'pres', p: state });
+        return Promise.resolve();
+      },
+      send: function (event, payload) {
+        if (isHost) { fanout({ t: 'bc', ev: event, payload: payload }); setTimeout(function () { emit(event, payload); }, 0); }
+        else jsend(hostDc, { t: 'bc', ev: event, payload: payload });
+        return Promise.resolve();
+      },
+      on: function (ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); return function () { listeners[ev] = listeners[ev].filter(function (f) { return f !== fn; }); }; },
+      peers: function () { return peers; }, state: function () { return state; }, status: function () { return status; }, rtt: function () { return rtt; },
+      guestCount: function () { return Object.keys(conns).length; },
+      leave: function () {
+        closed = true; timers.forEach(function (t) { clearInterval(t); clearTimeout(t); }); clearTimeout(bcTimer);
+        Object.keys(conns).forEach(function (k) { try { conns[k].pc.close(); } catch (e) {} }); try { if (hostPc) hostPc.close(); } catch (e) {}
+        return Promise.resolve();
+      }
+    };
+    return api;
+  }
+
+  /* ---------- online room (optional, needs internet and a free Supabase project) ---------- */
+  var sb = null;
+  function loadSupabase() {
+    return new Promise(function (res, rej) {
+      if (window.supabase) return res();
+      var s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js';
+      s.onload = res; s.onerror = function () { rej(new Error('No internet connection. Use Nearby mode, or connect to the internet.')); }; document.head.appendChild(s);
+    }).then(function () { if (!sb) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, realtime: { params: { eventsPerSecond: 10 } } }); });
+  }
+  function createOnline(code, me) {
+    var listeners = {}, peers = [], state = Object.assign({}, me);
+    var ch = null, status = 'connecting', closed = false, attempt = 0, retryTimer = null, lastRx = Date.now();
+    var queue = [], firstResolve = null, firstReject = null, rtt = null;
+    var emit = function (ev, p) { (listeners[ev] || []).forEach(function (f) { f(p); }); };
+    var setStatus = function (s) { if (s !== status) { status = s; emit('status', s); } };
+    var rx = function () { lastRx = Date.now(); };
+    function flush() { var now = Date.now(), q = queue; queue = []; q.forEach(function (m) { if (now - m.at < 20000) send(m.event, m.payload); }); }
+    function build() {
+      if (closed) return;
+      if (ch) { try { sb.removeChannel(ch); } catch (e) {} }
+      ch = sb.channel('manhunt:' + code, { config: { broadcast: { self: true }, presence: { key: me.id } } });
+      ch.on('presence', { event: 'sync' }, function () { rx(); peers = Object.values(ch.presenceState()).map(function (a) { return a[a.length - 1]; }); emit('peers', peers); });
+      ['ping', 'tagged'].forEach(function (ev) { ch.on('broadcast', { event: ev }, function (m) { rx(); emit(ev, m.payload); }); });
+      var mine = ch;
+      ch.subscribe(function (s) {
+        if (mine !== ch || closed) return;
+        if (s === 'SUBSCRIBED') { attempt = 0; rx(); mine.track(state).then(function () { setStatus('connected'); flush(); if (firstResolve) { firstResolve(); firstResolve = firstReject = null; } }).catch(scheduleRetry); }
+        else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') scheduleRetry();
+      });
+    }
+    function scheduleRetry() {
+      if (closed || retryTimer) return;
+      if (firstReject && attempt >= 3) { firstReject(new Error('Could not reach the online server. Check your signal and the Supabase keys.')); firstResolve = firstReject = null; }
+      setStatus(firstResolve ? 'connecting' : 'reconnecting');
+      var wait = Math.min(8000, 700 * Math.pow(2, attempt)) + Math.random() * 400; attempt++;
+      retryTimer = setTimeout(function () { retryTimer = null; build(); }, wait);
+    }
+    var hb = setInterval(function () {
+      if (closed || status !== 'connected') return; var t0 = Date.now();
+      ch.track(Object.assign({}, state, { hb: t0 })).then(function () { rtt = Date.now() - t0; }).catch(function () {});
+      if (Date.now() - lastRx > 18000) { setStatus('reconnecting'); build(); }
+    }, 5000);
+    function send(event, payload) {
+      if (status !== 'connected' || !ch) { queue.push({ event: event, payload: payload, at: Date.now() }); if (queue.length > 20) queue.shift(); return Promise.resolve(); }
+      return ch.send({ type: 'broadcast', event: event, payload: payload }).catch(function () { queue.push({ event: event, payload: payload, at: Date.now() }); });
+    }
+    return {
+      kind: 'online',
+      connect: function () { return new Promise(function (res, rej) { firstResolve = res; firstReject = rej; build(); }); },
+      update: function (patch) { state = Object.assign({}, state, patch); return status === 'connected' && ch ? ch.track(state).catch(function () {}) : Promise.resolve(); },
+      send: send,
+      on: function (ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); return function () { listeners[ev] = listeners[ev].filter(function (f) { return f !== fn; }); }; },
+      peers: function () { return peers; }, state: function () { return state; }, status: function () { return status; }, rtt: function () { return rtt; },
+      leave: function () { closed = true; clearInterval(hb); clearTimeout(retryTimer); try { if (ch) { ch.untrack(); sb.removeChannel(ch); } } catch (e) {} return Promise.resolve(); }
+    };
+  }
+
+  /* ---------- screens + home ---------- */
+  var screens = ['home', 'pairJoin', 'lobby', 'game', 'end'];
+  function show(id) { screens.forEach(function (s) { $('#' + s).hidden = s !== id; }); window.scrollTo(0, 0); }
+  var room = null, me = null, code = '', lastT0 = 0, G = null, offLobby = [];
+  if (!onlineConfigured) $('#onlineNote').textContent = 'Needs a free Supabase project. Fill in SUPABASE_URL and SUPABASE_ANON_KEY at the top of this file (steps at the bottom). Nearby mode needs no setup.';
+  try { var saved = localStorage.getItem('rh-name'); if (saved) $('#name').value = saved; } catch (e) {}
+
+  function prep(done) {
+    var err = $('#homeErr'); err.textContent = '';
+    var nm = $('#name').value.trim().slice(0, 14);
+    if (!nm) return (err.textContent = 'Enter a name.');
+    if (!$('#safe').checked) return (err.textContent = 'Confirm the safety rules first.');
+    if (!navigator.geolocation) return (err.textContent = 'This browser has no location support.');
+    try { localStorage.setItem('rh-name', nm); } catch (e) {}
+    err.textContent = 'Checking location…';
+    navigator.geolocation.getCurrentPosition(function () {
+      err.textContent = '';
+      done({ id: rid(), name: nm, team: 'b', host: false, ready: false, tag: false, out: false, imm: 0, cfg: null, lat: null, lng: null, ts: 0 });
+    }, function () { err.textContent = 'Location permission is required to play. Allow it in your browser settings. (GPS works without internet.)'; }, { enableHighAccuracy: true, timeout: 20000 });
+  }
+  $('#hostNear').addEventListener('click', function () {
+    prep(function (m) { me = m; me.host = true; me.cfg = { mode: 'single', r0: 300 }; room = createDirect(me, true); code = 'NEARBY'; lastT0 = 0; enterLobby(); });
+  });
+  $('#joinNear').addEventListener('click', function () {
+    prep(function (m) { me = m; room = createDirect(me, false); code = 'NEARBY'; lastT0 = 0; $('#hostCode').value = ''; $('#step2').hidden = true; $('#pairErr').textContent = ''; show('pairJoin'); });
+  });
+  function onlineGo(host) {
+    var err = $('#homeErr');
+    if (!onlineConfigured) return (err.textContent = 'Online mode needs the Supabase keys. Use Nearby mode, or see the setup notes at the bottom of this file.');
+    var cd = (host ? Math.random().toString(36).slice(2, 6) : $('#codeIn').value).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (cd.length < 3) return (err.textContent = 'Enter the room code from your host.');
+    prep(function (m) {
+      me = m; me.host = host; me.cfg = host ? { mode: 'single', r0: 300 } : null; code = cd; lastT0 = 0;
+      err.textContent = 'Connecting…';
+      loadSupabase().then(function () { room = createOnline(cd, me); return room.connect(); }).then(function () { err.textContent = ''; enterLobby(); }).catch(function (e) { err.textContent = e.message || 'Could not join.'; room = null; });
+    });
+  }
+  $('#hostOn').addEventListener('click', function () { onlineGo(true); });
+  $('#joinOn').addEventListener('click', function () { onlineGo(false); });
+
+  /* ---------- pairing screens ---------- */
+  function readClipboard(ta) { try { navigator.clipboard.readText().then(function (t) { ta.value = t; }, function () { ta.focus(); }); } catch (e) { ta.focus(); } }
+  function copyText(t, btn) { var old = btn.textContent; var ok = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = old; }, 1500); }; try { navigator.clipboard.writeText(t).then(ok, function () {}); } catch (e) {} }
+  $('#scanHost').addEventListener('click', function () { scanQR(function (t) { $('#hostCode').value = t; }); });
+  $('#pasteHost').addEventListener('click', function () { readClipboard($('#hostCode')); });
+  $('#goStep2').addEventListener('click', function () {
+    var err = $('#pairErr'); err.textContent = '';
+    room.answer($('#hostCode').value).then(function (ans) {
+      $('#step2').hidden = false; $('#ansCode').value = ans; drawQR($('#ansQr'), ans);
+      return room.whenOpen();
+    }).then(function () { enterLobby(); }).catch(function (e) { err.textContent = e.message || 'Could not pair.'; });
+  });
+  $('#copyAns').addEventListener('click', function () { copyText($('#ansCode').value, this); });
+  $('#pairBack').addEventListener('click', function () { if (room) room.leave(); room = null; show('home'); });
+
+  var pending = null;
+  $('#addPlayer').addEventListener('click', function () {
+    var err = $('#pairHostErr'); err.textContent = ''; $('#replyCode').value = ''; $('#offCode').value = 'Creating code…'; $('#pairHost').hidden = false;
+    room.addGuest().then(function (h) { pending = h; $('#offCode').value = h.code; drawQR($('#offQr'), h.code); }).catch(function (e) { err.textContent = e.message || 'Could not create a code.'; });
+  });
+  $('#copyOff').addEventListener('click', function () { copyText($('#offCode').value, this); });
+  $('#scanReply').addEventListener('click', function () { scanQR(function (t) { $('#replyCode').value = t; }); });
+  $('#pasteReply').addEventListener('click', function () { readClipboard($('#replyCode')); });
+  $('#connectReply').addEventListener('click', function () {
+    var err = $('#pairHostErr'); if (!pending) return; err.textContent = 'Connecting…';
+    pending.accept($('#replyCode').value).then(function (p) { err.textContent = ''; pending = null; $('#pairHost').hidden = true; renderLobby(); }).catch(function (e) { err.textContent = e.message || 'Could not connect.'; });
+  });
+  $('#pairHostClose').addEventListener('click', function () { if (pending) pending.cancel(); pending = null; $('#pairHost').hidden = true; });
+
+  /* ---------- lobby ---------- */
+  var startedAuto = false;
+  function enterLobby() {
+    show('lobby'); startedAuto = false; $('#lobErr').textContent = '';
+    $('#codeLbl').textContent = room.kind === 'direct' ? 'Nearby game' : 'Room code';
+    $('#codeShow').textContent = room.kind === 'direct' ? (me.host ? 'HOST' : 'JOINED') : code;
+    $('#codeShow').style.fontSize = room.kind === 'direct' ? '34px' : '';
+    $('#addBox').hidden = !(room.kind === 'direct' && me.host);
+    offLobby.forEach(function (f) { f(); }); offLobby = [];
+    offLobby.push(room.on('peers', onLobbyPeers), room.on('status', renderLobby));
+    renderLobby(); checkAdopt();
+  }
+  function checkAdopt() {
+    var r = room.peers().map(function (p) { return p.round; }).filter(Boolean).sort(function (a, b) { return b.t0 - a.t0; })[0];
+    if (r && r.t0 > lastT0 && Date.now() < r.t0 + r.dur * 1000) { startGame(r); }
+  }
+  function onLobbyPeers() { if (!$('#lobby').hidden) { renderLobby(); checkAdopt(); } }
+  function lobbyCfg() { var h = room.peers().filter(function (p) { return p.host; })[0]; return (h && h.cfg) || (me.host && room.state().cfg) || { mode: 'single', r0: 300 }; }
+  function setCfg(patch) { room.update({ cfg: Object.assign({}, lobbyCfg(), patch) }); renderLobby(); }
+  function renderLobby() {
+    if (!room || $('#lobby').hidden) return;
+    var st = room.state(), peers = room.peers(), cfg = lobbyCfg(), isTeam = cfg.mode === 'team', conn = room.status();
+    var lc = $('#lobConn'); lc.textContent = conn === 'connected' ? (room.kind === 'direct' ? '● CONNECTED (nearby)' : '● ONLINE') : conn === 'offline' ? '● DISCONNECTED. Ask the host for a new code.' : '● RECONNECTING…'; lc.style.color = conn === 'connected' ? 'var(--ok)' : 'var(--danger)';
+    var md = $('#modes'); md.textContent = '';
+    Object.keys(MODES).forEach(function (k) {
+      var b = document.createElement('button'); b.className = 'seg'; b.textContent = MODES[k].label; b.setAttribute('aria-pressed', cfg.mode === k);
+      if (me.host) b.onclick = function () { setCfg({ mode: k }); }; else b.disabled = true; md.appendChild(b);
+    });
+    $('#modeDesc').textContent = MODES[cfg.mode].desc;
+    var rd = $('#radii'); rd.textContent = '';
+    RADIUS_OPTIONS.forEach(function (r) {
+      var b = document.createElement('button'); b.className = 'seg'; b.textContent = r >= 1000 ? r / 1000 + ' km' : r + ' m'; b.setAttribute('aria-pressed', cfg.r0 === r);
+      if (me.host) b.onclick = function () { setCfg({ r0: r }); }; else b.disabled = true; rd.appendChild(b);
+    });
+    $('#teamBox').hidden = !isTeam;
+    [].forEach.call(document.querySelectorAll('#teamBox .seg'), function (b) { b.setAttribute('aria-pressed', (st.team || 'b') === b.dataset.t); });
+    var ros = $('#roster'); ros.textContent = ''; $('#plLabel').textContent = 'Players (' + peers.length + ')';
+    peers.forEach(function (p) {
+      var d = document.createElement('div'); d.className = 'card player';
+      var l = document.createElement('div'); l.className = 'l';
+      var dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = isTeam && p.team === 'r' ? C.red : C.blue;
+      var nm = document.createElement('span'); nm.textContent = String(p.name || 'Player').slice(0, 14) + (p.id === me.id ? ' (you)' : '') + (p.host ? ' · host' : '');
+      l.appendChild(dot); l.appendChild(nm);
+      var rs = document.createElement('b'); rs.textContent = p.ready ? 'READY' : 'NOT READY'; rs.style.color = p.ready ? 'var(--ok)' : 'var(--muted)'; rs.style.fontSize = '13px';
+      d.appendChild(l); d.appendChild(rs); ros.appendChild(d);
+    });
+    var reds = peers.filter(function (p) { return p.team === 'r'; }).length, blues = peers.length - reds;
+    var readyCount = peers.filter(function (p) { return p.ready; }).length;
+    var enough = peers.length >= 2 && (!isTeam || (reds >= 1 && blues >= 1));
+    var all = enough && readyCount === peers.length;
+    var hint = room.kind === 'direct' && me.host && peers.length < 2 ? 'Tap "Add a nearby player" to link a phone.' : 'Waiting for players to join…';
+    if (peers.length >= 2 && isTeam && !(reds >= 1 && blues >= 1)) hint = 'Team mode needs at least one Red and one Blue player.';
+    else if (peers.length >= 2) hint = all ? 'Everyone is ready. Starting…' : 'Waiting for ' + (peers.length - readyCount) + ' player(s) to press Ready.';
+    $('#lobHint').textContent = hint;
+    var rb = $('#ready'); rb.textContent = st.ready ? 'READY ✓  (tap to cancel)' : 'I AM READY'; rb.style.background = st.ready ? 'var(--ok)' : ''; rb.disabled = conn !== 'connected';
+    if (me.host && all && conn === 'connected' && !startedAuto) {
+      startedAuto = true;
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        room.update({ round: defaultRound({ lat: pos.coords.latitude, lng: pos.coords.longitude }, cfg) });
+      }, function () { startedAuto = false; $('#lobErr').textContent = 'Could not get your location. Move outside and press Ready again.'; room.update({ ready: false }); renderLobby(); }, { enableHighAccuracy: true, timeout: 15000 });
+    }
+  }
+  $('#ready').addEventListener('click', function () { room.update({ ready: !room.state().ready }); renderLobby(); });
+  [].forEach.call(document.querySelectorAll('#teamBox .seg'), function (b) { b.addEventListener('click', function () { room.update({ team: b.dataset.t }); renderLobby(); }); });
+  function leaveRoom() {
+    offLobby.forEach(function (f) { f(); }); offLobby = [];
+    stopGame(); if (room) room.leave(); room = null; show('home');
+  }
+  $('#leave1').addEventListener('click', leaveRoom);
+  $('#leave2').addEventListener('click', leaveRoom);
+
+  /* ---------- sound effects (made in the browser, no files, works offline) ---------- */
+  var AC = null;
+  function audio() {
+    try { if (!AC) { var Ctor = window.AudioContext || window.webkitAudioContext; if (!Ctor) return null; AC = new Ctor(); } if (AC.state === 'suspended') AC.resume(); return AC; } catch (e) { return null; }
+  }
+  ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { audio(); }, { passive: true }); });
+  function tone(freq, start, dur, type, vol) {
+    var a = audio(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain(), t = a.currentTime + start;
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.25, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.03);
+  }
+  function sfxEnemyNearby() { tone(740, 0, 0.12, 'square', 0.2); tone(740, 0.18, 0.12, 'square', 0.2); tone(988, 0.36, 0.22, 'square', 0.22); }   // three-pulse "enemy nearby" stinger
+  function sfxAlarm() { tone(950, 0, 0.15, 'square', 0.24); tone(700, 0.18, 0.15, 'square', 0.24); tone(950, 0.36, 0.15, 'square', 0.24); tone(700, 0.54, 0.15, 'square', 0.24); }
+  // Blue players hear it when a tagger is close: stinger on entering range, then sonar beeps that speed up and rise in pitch, then an alarm inside announceM.
+  function sfxLoop() {
+    var g = G; if (!g || !g.sfx || g.tag || g.out || g.ended) return;
+    var d = g.nearD, now = performance.now();
+    if (d > RULES.warnM + 4) g.sfxTier = 0;
+    if (!(d <= RULES.warnM)) return;
+    if (!g.sfxTier) { g.sfxTier = 1; g.lastBeep = now; sfxEnemyNearby(); vib([120, 80, 120, 80, 200]); return; }
+    if (d <= RULES.announceM) { if (now - g.lastBeep > 900) { g.lastBeep = now; sfxAlarm(); vib([200, 100, 200]); } return; }
+    var gap = 350 + (d - RULES.announceM) / (RULES.warnM - RULES.announceM) * 1150;
+    if (now - g.lastBeep > gap) { g.lastBeep = now; tone(900 + (RULES.warnM - d) * 45, 0, 0.07, 'sine', 0.3); }
+  }
+
+  /* ---------- game ---------- */
+  var timers = [], geoId = null, raf = 0, wake = null;
+  function stopGame() {
+    timers.forEach(clearInterval); timers = []; cancelAnimationFrame(raf);
+    if (geoId != null) { navigator.geolocation.clearWatch(geoId); geoId = null; }
+    if (wake) { try { wake.release(); } catch (e) {} wake = null; }
+    if (G) { G.offs.forEach(function (f) { f(); }); } G = null;
+    try { speechSynthesis.cancel(); } catch (e) {}
+  }
+  function say(m) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(function () { t.classList.remove('on'); }, 4000); }
+  function speak(m) { if (!G || G.muted) return; try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(m); u.lang = 'en-US'; speechSynthesis.speak(u); } catch (e) {} }
+  function vib(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+  function announce(m, p) { say(m); vib(p || [250, 120, 250]); speak(m); }
+
+  function startGame(round) {
+    stopGame(); lastT0 = round.t0;
+    var mode = round.mode, startTag = mode === 'team' ? room.state().team === 'r' : false;
+    G = { round: round, mode: mode, tag: startTag, out: false, imm: 0, ended: false, firstSeen: false, lastFirstTry: 0, lastAutoPing: 0, lastShare: 0,
+      seen: {}, pings: {}, hold: {}, tier: {}, lastAnn: {}, pos: null, rangeIdx: 2, muted: false, offs: [], myName: room.state().name, sfx: true, nearD: Infinity, sfxTier: 0, lastBeep: 0 };
+    show('game'); $('#bVoice').textContent = 'Voice on'; $('#bSfx').textContent = 'SFX on'; $('#handModal').hidden = true;
+    room.update({ rid: round.t0, tag: startTag, out: false, imm: 0, ready: false });
+    geoId = navigator.geolocation.watchPosition(function (p) { if (G) G.pos = smoothFix(G.pos, p.coords, Date.now()); }, function () { say('Location signal lost'); }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wake = w; }).catch(function () {}); } catch (e) {}
+    timers.push(setInterval(function () { if (G && G.pos && !G.out) room.update({ lat: G.pos.lat, lng: G.pos.lng, acc: Math.round(G.pos.acc), ts: Date.now() }); }, 1000));
+    timers.push(setInterval(tick, 1000)); timers.push(setInterval(sfxLoop, 100));
+    G.offs.push(
+      room.on('status', function (st) { if (st === 'reconnecting') say('Connection lost. Reconnecting…'); else if (st === 'connected' && G) { say('Back online'); if (G.pos && !G.out) room.update({ lat: G.pos.lat, lng: G.pos.lng, acc: Math.round(G.pos.acc), ts: Date.now() }); } }),
+      room.on('ping', function (p) { if (G && p.id !== me.id) G.pings[p.id + '|' + p.kind] = p; }),
+      room.on('tagged', onTagged)
+    );
+    raf = requestAnimationFrame(frame); tick();
+  }
+
+  function becomeTagged(byId, byName) {
+    var g = G; if (!g || g.tag || g.out || Date.now() < g.imm) return;
+    if (g.mode === 'team') { g.out = true; room.update({ out: true, lat: null, lng: null }); }
+    else { g.tag = true; room.update({ tag: true }); }
+    room.send('tagged', { target: me.id, name: g.myName, by: byId || null, byName: byName || null, ts: Date.now() });
+  }
+  function onTagged(p) {
+    var g = G; if (!g) return;
+    if (p.first) {
+      g.firstSeen = true; announce(p.name + ' is the first tagger', [400]);
+      if (p.target === me.id && !g.tag) { g.tag = true; room.update({ tag: true }); }
+      return;
+    }
+    announce('Player tagged: ' + p.name + (p.byName ? ', by ' + p.byName : ''), [200]);
+    if (g.mode === 'single' && p.by === me.id && p.target !== me.id) { g.tag = false; g.imm = Date.now() + RULES.immuneSec * 1000; room.update({ tag: false, imm: g.imm }); }
+  }
+
+  function derive(now) {
+    var g = G, r = g.round, elapsed = (now - r.t0) / 1000, zr = zoneRadius(r, Math.max(0, elapsed));
+    var peers = room.peers().filter(function (p) { return p.rid === r.t0; });
+    var live = peers.filter(function (p) { return p.id !== me.id && p.lat != null && !p.out; });
+    peers.forEach(function (p) { g.seen[p.id] = { name: p.name, lastSeen: now, tag: p.id === me.id ? g.tag : !!p.tag, out: p.id === me.id ? g.out : !!p.out }; });
+    var entries = Object.keys(g.seen).map(function (k) { var e = g.seen[k]; if (!e.out && now - e.lastSeen > GRACE_MS) e.out = true; return e; });
+    var blueAlive = entries.filter(function (e) { return !e.tag && !e.out; }).length;
+    var pos = g.pos;
+    var opp = live.filter(function (p) { return g.tag ? !p.tag : !!p.tag; });
+    var shown = live.filter(function (p) {
+      var mate = !!p.tag === g.tag;
+      if (mate && (g.mode === 'team' || g.tag)) return true;
+      if (!mate && !g.tag && pos && dist(pos, p) <= RULES.scanRangeM) return true;   // blue players see close red players
+      return false;                                                                    // taggers never see blue players directly
+    });
+    var pings = Object.keys(g.pings).map(function (k) { return g.pings[k]; }).filter(function (p) {
+      var a = now - p.ts;
+      if (p.kind === 'auto') return false;
+      return p.kind === 'share' && p.side === (g.tag ? 'r' : 'b') && a < 60000;
+    });
+    return { elapsed: elapsed, countdown: elapsed < 0, running: elapsed >= r.run, zr: zr, peers: peers, live: live, entries: entries, blueAlive: blueAlive, pos: pos, opp: opp, shown: shown, pings: pings,
+      outside: pos ? dist(pos, r.center) > zr : false, peersAll: peers };
+  }
+
+  function fresh(g, p, now) {
+    var r = (g.rx = g.rx || {})[p.id];
+    if (!r || r.ts !== p.ts) r = g.rx[p.id] = { ts: p.ts, at: now };
+    return now - r.at < 10000;                                                   // ignore positions older than 10 s
+  }
+
+  function tick() {
+    var g = G; if (!g || g.ended) return;
+    var now = Date.now(), d = derive(now), r = g.round, mode = g.mode, pos = d.pos;
+    updateHud(d, now);
+    g.nearD = Infinity; if (!g.tag && !g.out && d.running && pos) d.opp.forEach(function (p) { if (fresh(g, p, now)) g.nearD = Math.min(g.nearD, effDist(pos, p)); });
+    var nt = $('#nearTxt'); nt.textContent = (!g.tag && !g.out && d.running && g.nearD < Infinity && g.nearD <= RULES.warnM * 2) ? 'Tagger ' + nearWords(g.nearD) : '';
+    if (d.countdown) return;
+    if (d.outside && !g.out && now - (g.lastWarn || 0) > 15000) { g.lastWarn = now; vib([300]); say('Outside the play area. Head back in.'); }
+    if (mode !== 'team' && d.elapsed >= r.run && !g.firstSeen && now - g.lastFirstTry > 3000) {
+      var ids = d.peers.map(function (p) { return p.id; }).sort();
+      if (ids[0] === me.id && ids.length >= 2) {
+        g.lastFirstTry = now; var pick = d.peers[Math.floor(Math.random() * d.peers.length)];
+        room.send('tagged', { first: true, target: pick.id, name: pick.name, ts: now });
+      }
+    }
+    if (d.running && pos) {
+      if (!g.tag && !g.out && now >= g.imm && (mode === 'team' || g.firstSeen)) {
+        var fire = null;
+        d.live.filter(function (p) { return p.tag; }).forEach(function (p) {
+          if (dist(pos, p) <= RULES.tagRangeM) { g.hold[p.id] = (g.hold[p.id] || 0) + 1; if (g.hold[p.id] >= RULES.tagHoldSec && !fire) fire = p; } else g.hold[p.id] = 0;
+        });
+        if (fire) { g.hold[fire.id] = 0; becomeTagged(fire.id, fire.name); }
+      } else if (g.tag) {
+        d.live.filter(function (p) { return !p.tag; }).forEach(function (p) { g.hold[p.id] = dist(pos, p) <= RULES.tagRangeM ? (g.hold[p.id] || 0) + 1 : 0; });
+      }
+    }
+    if (d.running && pos && !g.out) {
+      d.opp.forEach(function (p) {
+        if (!fresh(g, p, now)) return;
+        var dd = effDist(pos, p), t = g.tier[p.id] || 0;
+        if (dd > RULES.warnM + 5) g.tier[p.id] = 0; else if (dd > RULES.announceResetM && t === 2) g.tier[p.id] = g.tag ? 0 : 1;
+        var cur = g.tier[p.id] || 0, want = dd <= RULES.announceM ? 2 : (!g.tag && dd <= RULES.warnM ? 1 : 0);
+        if (want > cur && now - (g.lastAnn[p.id] || 0) > RULES.announceCooldownSec * 1000) {
+          g.tier[p.id] = want; g.lastAnn[p.id] = now;
+          var m = Math.max(1, Math.round(dd)), ap = (pos.acc > 8 || (p.acc || 0) > 8) ? 'about ' : '';
+          if (want === 1) announce('Tagger ' + p.name + ' is nearby.', [150]);
+          else announce(dd <= 2 ? (g.tag ? p.name + ' is right next to you.' : 'Tagger ' + p.name + ' is right next to you. Run!') : (g.tag ? p.name + ' is ' + ap + m + ' meters away.' : 'Tagger ' + p.name + ' is ' + ap + m + ' meters away. Run!'));
+        }
+      });
+    }
+    var settled = g.firstSeen || mode === 'team';
+    if (mode !== 'single' && settled && d.elapsed > r.run + 4 && d.entries.length >= 2 && d.blueAlive === 0) finish({ mode: mode, winner: 'taggers', alive: 0 });
+    else if (d.elapsed >= r.dur) {
+      if (mode === 'single') { var it = d.entries.filter(function (e) { return e.tag && !e.out; })[0]; finish({ mode: mode, itName: it ? it.name : null }); }
+      else finish({ mode: mode, winner: d.blueAlive > 0 ? 'blue' : 'taggers', alive: d.blueAlive });
+    }
+  }
+
+  function finish(res) {
+    var g = G; if (!g || g.ended) return; g.ended = true;
+    room.update({ lat: null, lng: null, rid: null, out: false, tag: false, ready: false, imm: 0, round: me.host ? null : undefined });
+    stopGame();
+    var title, body;
+    if (res.mode === 'single') { title = res.itName ? res.itName.toUpperCase() + ' LOSES' : 'TIME IS UP'; body = res.itName ? res.itName + ' was still it when time ran out. Everyone else wins.' : 'Nobody was holding the tag.'; }
+    else if (res.winner === 'taggers') { title = res.mode === 'virus' ? 'VIRUS WINS' : 'RED TEAM WINS'; body = 'Every blue player was tagged.'; }
+    else { title = 'BLUE WINS'; body = res.alive + ' blue player' + (res.alive === 1 ? '' : 's') + ' survived until time ran out.'; }
+    $('#endMode').textContent = MODES[res.mode].label; $('#endTitle').textContent = title; $('#endBody').textContent = body;
+    show('end');
+  }
+  $('#toLobby').addEventListener('click', function () { show('lobby'); enterLobby(); });
+
+  function updateHud(d, now) {
+    var g = G, r = g.round;
+    $('#roleDot').style.background = g.out ? '#8fb0bc' : g.tag ? C.red : C.blue;
+    $('#roleTxt').textContent = g.out ? 'OUT' : g.tag ? 'TAGGED' : 'NORMAL';
+    $('#time').textContent = fmt(r.dur - Math.max(0, d.elapsed));
+    $('#blueLeft').textContent = d.blueAlive;
+    var st = room.status(), pos = d.pos;
+    $('#connDot').style.background = st === 'connected' ? 'var(--ok)' : 'var(--danger)';
+    $('#connTxt').textContent = st === 'connected' ? 'Online' + (room.rtt() ? ' · ' + room.rtt() + ' ms' : '') : 'Reconnecting…';
+    $('#gpsTxt').textContent = '  GPS ' + (pos ? (pos.acc < 15 ? 'good' : pos.acc < 40 ? 'fair' : 'weak') + ' ±' + Math.round(pos.acc) + 'm' : 'searching…');
+    $('#count').hidden = !d.countdown; if (d.countdown) $('#countN').textContent = Math.ceil(-d.elapsed);
+    var bn = '', col = '';
+    if (g.out) bn = 'YOU ARE OUT · SPECTATING';
+    else if (d.outside) { bn = 'OUTSIDE THE PLAY AREA'; col = 'var(--danger)'; }
+    else if (!d.countdown && !d.running) bn = (g.mode === 'team' ? 'RUN! Taggers start in ' : 'RUN! Tagger chosen in ') + Math.ceil(r.run - d.elapsed) + 's';
+    else if (pos) {
+      var near = d.opp.map(function (p) { return { p: p, d: dist(pos, p) }; }).sort(function (a, b) { return a.d - b.d; })[0];
+      if (near && near.d <= RULES.tagRangeM && (g.hold[near.p.id] || 0) > 0) { bn = (g.tag ? 'Tagging ' : 'Being tagged by ') + near.p.name + ' · ' + g.hold[near.p.id] + '/' + RULES.tagHoldSec + 's'; col = g.tag ? C.red : C.blue; }
+    }
+    $('#banner').innerHTML = bn ? '<span></span>' : ''; if (bn) { $('#banner span').textContent = bn; $('#banner span').style.background = col || ''; }
+    $('#hand').hidden = g.tag || g.out || !d.running;
+    var cd = Math.max(0, RULES.shareCooldownSec - (now - g.lastShare) / 1000), sh = $('#share');
+    sh.textContent = cd > 0 ? Math.ceil(cd) + 's' : 'SHARE'; sh.classList.toggle('ready', cd === 0 && !g.out); sh.disabled = cd > 0 || g.out;
+    $('#hint').textContent = 'RANGE ' + RULES.radarRanges[g.rangeIdx] + ' m · tap radar to change. ' + (g.tag ? 'Blue players glow when the sweep passes them, then fade.' : 'Red players show when within ' + RULES.scanRangeM + ' m.');
+  }
+
+  /* ---------- radar ---------- */
+  function frame() {
+    raf = requestAnimationFrame(frame);
+    var g = G; if (!g) return;
+    var cv = $('#radar'), dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    var ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+    var now = Date.now(), d = derive(now), size = Math.min(w, h), cx = w / 2, cy = h / 2, R = size / 2 - 12;
+    var me0 = d.pos || g.round.center, range = RULES.radarRanges[g.rangeIdx];
+    ctx.fillStyle = C.bg; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = C.radar; ctx.lineWidth = 2; ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.2832); ctx.stroke();
+    ctx.lineWidth = 1; ctx.globalAlpha = .25;
+    for (var i = 1; i <= 3; i++) { ctx.beginPath(); ctx.arc(cx, cy, R * i / 3, 0, 6.2832); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.stroke();
+    ctx.globalAlpha = .6; ctx.fillStyle = C.radar; ctx.font = '10px system-ui'; ctx.textAlign = 'left';
+    for (i = 1; i <= 3; i++) ctx.fillText(Math.round(range * i / 3) + ' m', cx + 4, cy - R * i / 3 + 12);
+    ctx.textAlign = 'center'; ctx.fillText('N', cx, cy - R + 14); ctx.globalAlpha = 1;
+    // sweep
+    var angN = (performance.now() % 3200) / 3200 * 6.2832, a = angN - 1.5708, steps = 28, span = 55 * Math.PI / 180;
+    for (i = 0; i < steps; i++) {
+      ctx.fillStyle = 'rgba(57,255,122,' + (0.24 * (1 - i / steps)).toFixed(3) + ')';
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a - (i + 1) * span / steps, a - i * span / steps); ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = C.radar; ctx.lineWidth = 2; ctx.globalAlpha = .9; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); ctx.stroke(); ctx.globalAlpha = 1;
+    // sweep hits: a tagger sees a blue player only when the beam passes over their real position
+    if (!g.hits) g.hits = {};
+    if (g.tag && !g.out && d.pos && !d.countdown) {
+      var prevA = g.prevAng == null ? angN : g.prevAng, adv = (angN - prevA + 6.2832) % 6.2832;
+      if (adv > 0 && adv < 3.1416) d.live.forEach(function (p) {
+        if (p.tag) return;
+        var o2 = offsetM(d.pos, p); if (Math.hypot(o2.dx, o2.dy) > range) return;
+        var br = (Math.atan2(o2.dx, o2.dy) + 6.2832) % 6.2832, rel = (br - prevA + 6.2832) % 6.2832;
+        if (rel > 0 && rel <= adv) g.hits[p.id] = { t: now, lat: p.lat, lng: p.lng };
+      });
+    }
+    g.prevAng = angN;
+    if (!g.tag) g.hits = {};
+    // zone
+    var zo = offsetM(me0, g.round.center);
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.2832); ctx.clip();
+    ctx.strokeStyle = C.danger; ctx.lineWidth = 2; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.arc(cx + zo.dx / range * R, cy - zo.dy / range * R, d.zr / range * R, 0, 6.2832); ctx.stroke(); ctx.restore(); ctx.setLineDash([]);
+    // blips
+    var blips = d.shown.map(function (p) { return { lat: p.lat, lng: p.lng, color: p.tag ? C.red : C.blue, label: p.name, op: 1 }; })
+      .concat(Object.keys(g.hits).map(function (id) { var h = g.hits[id], age = now - h.t; if (age > RULES.sweepFadeMs) { delete g.hits[id]; return null; } return { lat: h.lat, lng: h.lng, glow: 1 - age / RULES.sweepFadeMs }; }).filter(Boolean))
+      .concat(d.pings.map(function (p) { return { lat: p.lat, lng: p.lng, color: p.side === 'r' ? C.red : C.blue, ring: true, label: p.name, op: Math.max(.25, 1 - (now - p.ts) / (p.kind === 'auto' ? 35000 : 60000)) }; }));
+    blips.forEach(function (b) {
+      var o = offsetM(me0, b), m = Math.hypot(o.dx, o.dy), far = m > range, k = far ? (R * 0.97) / m : R / range, x = cx + o.dx * k, y = cy - o.dy * k, op = b.op * (far ? .6 : 1);
+      if (b.glow != null) {
+        if (far) return;
+        var gl = b.glow, rr = 8 + 22 * gl, gr = ctx.createRadialGradient(x, y, 0, x, y, rr);
+        gr.addColorStop(0, 'rgba(150,205,255,' + (0.9 * gl).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(58,160,255,0)');
+        ctx.globalAlpha = 1; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.2832); ctx.fill();
+        ctx.globalAlpha = Math.pow(gl, 1.3); ctx.fillStyle = C.blue; ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; return;
+      }
+      ctx.globalAlpha = op; ctx.strokeStyle = b.color; ctx.fillStyle = b.color;
+      if (b.ring || far) { ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, far ? 5 : 8, 0, 6.2832); ctx.stroke(); }
+      else { ctx.globalAlpha = op * .25; ctx.beginPath(); ctx.arc(x, y, 10, 0, 6.2832); ctx.fill(); ctx.globalAlpha = op; ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill(); }
+      if (b.label && !far) { ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.fillText(b.label, x, y - 13); }
+      ctx.globalAlpha = 1;
+    });
+    ctx.fillStyle = C.radar; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = C.radar; ctx.globalAlpha = .6; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, 9, 0, 6.2832); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  $('#radar').addEventListener('click', function () { if (G) G.rangeIdx = (G.rangeIdx + 1) % RULES.radarRanges.length; });
+
+  /* ---------- buttons ---------- */
+  $('#bLeave').addEventListener('click', function () { if (confirm('Leave the game? Your location stops being shared.')) leaveRoom(); });
+  $('#bVoice').addEventListener('click', function () { if (!G) return; G.muted = !G.muted; $('#bVoice').textContent = G.muted ? 'Voice off' : 'Voice on'; if (G.muted) { try { speechSynthesis.cancel(); } catch (e) {} } });
+  $('#bCal').addEventListener('click', function () {
+    if (!G || !G.pos) return alert('Waiting for GPS.');
+    if (CAL > 0 && confirm('Distance calibration is ' + CAL.toFixed(1) + ' m. Reset it?')) { CAL = 0; try { localStorage.removeItem('rh-cal'); } catch (e) {} return; }
+    var near = null, pd = Infinity; (G.round ? room.peers() : []).forEach(function (p) { if (p.id !== me.id && p.lat != null) { var x = dist(G.pos, p); if (x < pd) { pd = x; near = p; } } });
+    if (!near) return alert('No other player visible yet.');
+    if (!confirm('Stand about 1 meter from ' + near.name + ', then press OK. Current reading: ' + pd.toFixed(1) + ' m.')) return;
+    CAL = Math.max(0, Math.min(30, pd - 1)); try { localStorage.setItem('rh-cal', String(CAL)); } catch (e) {}
+    say('Calibrated. Offset ' + CAL.toFixed(1) + ' meters.');
+  });
+  $('#bSfx').addEventListener('click', function () { if (!G) return; G.sfx = !G.sfx; $('#bSfx').textContent = G.sfx ? 'SFX on' : 'SFX off'; if (G.sfx) tone(660, 0, 0.1, 'sine', 0.2); });
+  $('#share').addEventListener('click', function () {
+    var g = G, now = Date.now(); if (!g || !g.pos || g.out || now - g.lastShare < RULES.shareCooldownSec * 1000) return;
+    g.lastShare = now; room.send('ping', { id: me.id, name: g.myName, lat: g.pos.lat, lng: g.pos.lng, ts: now, kind: 'share', side: g.tag ? 'r' : 'b' }); say('Spot shared with your side');
+  });
+  $('#hand').addEventListener('click', function () { $('#handModal').hidden = false; $('#handIn').value = ''; $('#handIn').focus(); });
+  $('#handNo').addEventListener('click', function () { $('#handModal').hidden = true; });
+  $('#handOk').addEventListener('click', function () {
+    var g = G; if (!g) return;
+    if ($('#handIn').value.trim().toLowerCase() !== 'tag') { say('Type the word tag to confirm.'); return; }
+    var d = derive(Date.now()), t = g.pos ? d.opp.map(function (p) { return { p: p, d: dist(g.pos, p) }; }).sort(function (a, b) { return a.d - b.d; })[0] : null;
+    $('#handModal').hidden = true;
+    var ok = t && t.d < RULES.tagVerifyM; becomeTagged(ok ? t.p.id : null, ok ? t.p.name : null);
+  });
+
+})();
+
+/* =========================================================================
+   NOTES
+   Nearby mode (no internet):
+   - Everyone joins the same Wi-Fi network, or one phone's mobile hotspot. The internet does not have to work.
+   - Host: Host nearby game > Add a nearby player > show the QR code. The player taps Join nearby game, scans it
+     (or pastes the code), then shows their reply QR to the host, who scans it. Repeat for each player.
+   - The host phone is the hub. If the host leaves, the round ends for everyone.
+   - Bluetooth is not available to web pages. Wi-Fi or a hotspot is the way to play offline from a browser.
+   - Phones on a guest or "client isolation" Wi-Fi (some cafes, schools) block device-to-device traffic. Use a hotspot.
+   - GPS works without internet. Browsers only allow GPS on https:// pages or local files. If your browser blocks GPS
+     for a saved file, open this page once from an https address (for example Netlify Drop), then use it from there.
+   Online mode (optional, internet): create a free project at supabase.com, paste its URL and anon key at the top,
+   and in Realtime settings keep public channels enabled. No tables and no sign-in are needed.
+   Limits: tracking works only while the page is open on screen (the screen is kept awake). GPS is accurate to about
+   5-15 m, so use Hand tag or raise RULES.tagRangeM. Hiding information is client-side, so a modified page could
+   cheat. Fine for friends, not for competitive play. Not yet tested on real phones.
+   Safety: play on foot in public places, away from roads, water and private property. Adults only, or with an adult.
+   ========================================================================= */
+</script>
+</body>
+</html>
